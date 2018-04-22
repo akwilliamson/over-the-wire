@@ -7,7 +7,7 @@ set SSH_USER [lindex $argv 2];
 set SSH_PASS [lindex $argv 3];
 set SSH_CMD  [lindex $argv 4];
 
-spawn ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no ${SSH_USER}@${SSH_HOST} -p ${SSH_PORT}
+spawn ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no ${SSH_USER}@${SSH_HOST} -p ${SSH_PORT}
 expect "password:"
 send "${SSH_PASS}\r"
 expect $prompt

@@ -2,14 +2,19 @@
 
 SSH_HOST="bandit.labs.overthewire.org"
 SSH_PORT="2220"
+SSH_USER="bandit0"
 SSH_PASS="bandit0"
 
 set_password(){
+    SSH_PASS=$(run_on_remote ${1} ${2} "${3}")
+    echo "Retrieved password from ${1} :" ${SSH_PASS}
+}
+
+run_on_remote(){
     user=${1}
     pass=${2}
     cmd=${3}
-    SSH_PASS=$(./remote.ssh.sh ${SSH_HOST} ${SSH_PORT} ${user} ${pass} "${cmd}" | tr -d '\n' | tr -d '\r')
-    echo "Retrieved password from ${user} :" ${SSH_PASS}
+    echo $(./remote.ssh.sh ${SSH_HOST} ${SSH_PORT} ${user} ${pass} "${cmd}" | tr -d '\n' | tr -d '\r')
 }
 
 # The password for the next level is stored in a file called readme located in the home directory. 
@@ -79,3 +84,15 @@ set_password "bandit14" ${SSH_PASS} "echo ${SSH_PASS} | nc localhost 30000 | sed
 
 # The password for the next level can be retrieved by submitting the password of the current level to port 30001 on localhost using SSL encryption.
 set_password "bandit15" ${SSH_PASS} "echo ${SSH_PASS} | openssl s_client -connect localhost:30001 -ign_eof 2>/dev/null | sed -n '/Correct!/{n;p}'"
+
+# SSH_PASS=cluFn7wTiGryunymYOu4RcffSxQluehd
+# The credentials for the next level can be retrieved by submitting the password of the current level to a port on localhost in the range 31000 to 32000. First find out which of these ports have a server listening on them. Then find out which of those speak SSL and which don’t. There is only 1 server that will give the next credentials, the others will simply send back to you whatever you send to it.
+run_on_remote "bandit16" ${SSH_PASS} "\
+rm -rf /tmp/krashid2 && mkdir -p /tmp/krashid2 && cd /tmp/krashid2 && nmap -p 31000-32000 127.0.0.1 | \
+awk -F '/' '{print \$1}' | \
+egrep -x '[0-9]+' > ports.txt \
+"
+run_on_remote "bandit16" ${SSH_PASS} "cd /tmp/krashid2 && \
+for p in \$(cat ports.txt); do echo ${SSH_PASS} | openssl s_client -quiet -connect localhost:\${p} > \${p} 2>&1 & done"
+run_on_remote "bandit16" ${SSH_PASS} "cd /tmp/krashid2 && find . -type f | xargs cat | sed -n '/Correct!/,/^$/p' | tail -n +2 > ssh.key && chmod 0600 ssh.key"
+set_password "bandit16" ${SSH_PASS} "cd /tmp/krashid2 && ssh -o StrictHostKeyChecking=no -i ./ssh.key bandit17@localhost 2>/dev/null diff passwords.old passwords.new | tail -1 | awk '{print \$2}'"
